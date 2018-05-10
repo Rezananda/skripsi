@@ -1,0 +1,3 @@
+disable-R0903, C0111, C0103, W0703, C0301, W0401
+ignored-modules=flask_alchemy, flask_wtf, wtforms
+ignored-classes=SQLObject, Registrant, scoped_session
