@@ -1,26 +1,46 @@
 from functools import wraps
-from flask import jsonify, request, Flask
+from flask import jsonify, request, Flask, make_response
 import jwt
 from models import User
-from app_core import app, db
+from controllers.app_core import app, db
 from pymongo import MongoClient
 import gridfs
 import json, pickle
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+import os
+from bson import ObjectId
+from werkzeug.wrappers import Response
+
+def validate(self, form, extra_validators=tuple()):
+    self.errors = list(self.process_errors)
+
+app = Flask(__name__)
+
+bcrypt = Bcrypt(app)
+basedir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(basedir, '../database/database.db')
+db_uri = 'sqlite:///{}'.format(db_path)
+
+app.config['SECRET_KEY'] = 'secretkey'
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 client = MongoClient('10.34.216.102')
 
+
 def validate_token(request):
+
+    auth_header = request.headers.get('Authorization')
+
+    if not auth_header or 'Bearer' not in auth_header:
+        return {'message': 'Bad authorization header!'}
+
+    split = auth_header.split(' ')
+
     try:
-        auth_header = request.headers.get('Authorization')
-
-        if not auth_header or 'Bearer' not in auth_header:
-            return {'message': 'Bad authorization header!'}
-
-        split = auth_header.split(' ')
-
-        if not len(split) == 2:
-           return {'message': 'Bad authorization header!'}
-
         decode_data = jwt.decode(split[1], app.config['SECRET_KEY'])
         user = User.query.filter_by(mac_address=decode_data.get('user_id')).first()
 
@@ -32,48 +52,20 @@ def validate_token(request):
     except Exception as error:
         return {'message': 'Token is invalid'}
 
-"""@app.route("/current-user")
-def api_get_current_user():
-    try:
-        auth_header = request.headers.get('Authorization')
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        res = validate_token(request)
+        if not res.get('user'):
+            return jsonify(res.get('message')), 401
+        return f(res.get('user'), *args, **kwargs)
+    return decorated
 
-        if not auth_header or 'Bearer' not in auth_header:
-            return jsonify({'message': 'Bad authorization header!'}), 400
 
-        split = auth_header.split(' ')
-
-        if not len(split) == 2:
-           return jsonify({'message': 'Bad authorization header!'}), 400
-
-        decode_data = jwt.decode(split[1], app.config['SECRET_KEY'])
-        user = User.query.filter_by(mac_address=decode_data.get('mac_address'))
-
-        if not user:
-            return jsonify({'message': 'User not found'}), 401
-
-        return jsonify({'message': 'User is authenticated',
-                'user': user.as_dict()
-            })
-
-    except Exception as error:
-        return jsonify({'message': 'Token is invalid'}), 401
-
-"""
-def token_required(is_admin=False):
-    def token_required_inner(f):
-        @wraps(f)
-        def decorated(*args, **kwargs):
-            res = validate_token(request)
-            if not res.get('user'):
-                return jsonify(res.get('message')), 401
-            return f(res.get('user'), *args, **kwargs)
-        return decorated()
-    return token_required_inner()
-
-@app.route("/")
+"""@app.route("/")
 def root():
     return jsonify({'message': 'API Root'})
-
+"""
 """@app.route("/current-user")
 def api_get_current_user():
     auth_header = request.headers.get('Authorization')
@@ -105,7 +97,7 @@ def api_login():
             return jsonify({
                 'message': 'No login data found'
             })
-        user = User.query.filter_by(email=req.get('username')).first()
+        user = User.query.filter_by(username=req.get('username')).first()
 
         if user and user.check_password(req.get('password')):
             token_data = {
@@ -118,25 +110,27 @@ def api_login():
         return jsonify({'message': 'invalid login'}), 401
 
     except Exception as error:
+        print(error)
         return jsonify({'message': 'something went wrong'}), 400
 
 
 @app.route("/users")
-@token_required(is_admin=True)
+@token_required
 def api_get_users(current_user):
 
     data = User.query.all()
     users = [user.as_dict() for user in data]
     return jsonify(users)
 
-@app.route("/user/<int:user_id>")
-@token_required
+#@app.route("/user/<int:user_id>")
+#@token_required
+'''
 def api_get_users(current_user, user_id):
 
     data = User.query.filter_by(mac_address=user_id)
     users = [user.as_dict() for user in data]
     return jsonify(users)
-
+'''
 @app.route("/users", methods=['POST'])
 def api_create_users():
     req = request.get_json(silent=True)
@@ -154,13 +148,14 @@ def api_create_users():
             'user': user.as_dict()
         })
     except Exception as error:
+        print(error)
         return jsonify({
             'message': 'Something went wrong'
         }),400
 
 @app.route('/api/getdata',methods=['GET'])
 @token_required
-def get():
+def getdata(self):
     db_ = client.test
     data = []
     if request.args.get('topic') :
@@ -176,14 +171,30 @@ def get():
             data.append(data_)
     return json.dumps(data, indent=4, sort_keys=True)
 
-@app.route('/api/post/<string:num>', methods=['POST'])
+@app.route('/api/post', methods=['POST'])
 @token_required
-def post(num):
+def post(self):
     db = client.test
     fs = gridfs.GridFS(db)
     for data in request.get_json():
-        if "Data" in data :
-            fs.put(pickle.loads(data["Data"]),filename=data["Name"])
+        if "Data" in data or request.content_length >= (800*1024):
+            print(gridfs, data["Name"])
+            gambar = pickle.loads(data["Data"].encode('utf-8'),encoding='latin1')
+            fs.put(gambar,filename=data["Name"], encoding='latin1')
         else :
-            db[num].insert_one(data)
+            db['testH__130'].insert_one(data)
     return "DATA TEST TERKIRIM"
+
+@app.route('/api/getgambar/<string:oid>/')
+def getGambar(oid):
+    db = client.test
+    fs = gridfs.GridFS(db)
+    file = fs.get(ObjectId(oid))
+    print(file.upload_date)
+    res = make_response(file.read())
+    res.mimetype = "image/jpg"
+    return res
+    #return Response(file, mimetype=file.content_type, direct_passthrough=True)
+
+#if __name__ == '__main__':
+ #       app.run(debug=True, threaded=True, port=5001,host='127.0.0.1')
