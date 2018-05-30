@@ -10,7 +10,7 @@ CORS(app)
 
 bcrypt = Bcrypt(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(basedir, '../database/database.db')
+db_path = os.path.join(basedir, 'database/database.db')
 db_uri = 'sqlite:///{}'.format(db_path)
 app.config['SECRET_KEY'] = 'awefawefawefawef'
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri

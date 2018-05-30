@@ -1,5 +1,5 @@
 #from uuid import uuid4
-from controllers.app_core import db, ma, bcrypt
+from app_core import db, ma, bcrypt
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)

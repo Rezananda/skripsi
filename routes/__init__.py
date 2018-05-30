@@ -15,22 +15,10 @@ from flask_bcrypt import Bcrypt
 import os
 from bson import ObjectId
 from werkzeug.wrappers import Response
+from app_core import app, db, ma
 
 def validate(self, form, extra_validators=tuple()):
     self.errors = list(self.process_errors)
-
-app = Flask(__name__)
-CORS(app)
-
-bcrypt = Bcrypt(app)
-basedir = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(basedir, '../database/database.db')
-db_uri = 'sqlite:///{}'.format(db_path)
-app.config['SECRET_KEY'] = 'awefawefawefawef'
-app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-ma = Marshmallow(app)
 
 client = MongoClient('10.34.216.102')
 
