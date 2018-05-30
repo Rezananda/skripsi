@@ -32,13 +32,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-#client = MongoClient('10.34.216.102')
-client = MongoClient('159.65.1.111', 29027,
-                        username='mongostorage',
-                        password='iotdatastr',
-                        authSource='admin',
-                        authMechanism='SCRAM-SHA-1')
-
+client = MongoClient('10.34.216.102')
 
 def validate_token(request,is_admin=False):
 
