@@ -46,6 +46,7 @@
     <ul class="nav navbar-nav navbar-right">
       <li><a href="http://127.0.0.1:5001/register"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
       <li><a href="http://127.0.0.1:5001/login"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+       <li><a href="http://127.0.0.1:5001/login"><span class="glyphicon glyphicon-log-out"></span> Logout</a></li>
     </ul>
   </div>
 </nav>
@@ -123,6 +124,39 @@
             </tr>
         </table>
     </div>
+      {% if User|length > 0 %}
+      <div class="col-sm-9">
+    <h2>USER</h2>
+        <div class="form-group">
+            <table class="table table-hover">
+        <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Mac Address</th>
+        <th>Delete</th>
+        </tr>
+
+         {% for user_ in User %}
+
+        <tr>
+        <td>{{user_["id"]}}</td>
+        <td>{{user_["username"]}}</td>
+        <td>{{user_["mac_address"]}}</td>
+        <td>
+            <form name="delete" method="post" action="">
+                <input type="hidden" value={{user_["id"]}} name="id">
+                <input type="hidden" value="delete" name="action">
+              <button type="submit" class="btn btn-default"><i class="glyphicon glyphicon-remove"></i></button>
+            </form>
+        </td>
+        </tr>
+
+         {% endfor %}
+
+      </table>
+        </div>
+    </div>
+      {% endif %}
 </div>
 </div>
 </body>

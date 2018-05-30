@@ -72,39 +72,15 @@ def token_required(is_admin=False):
     return token_required_inner
 
 
-@app.route("/")
-def index():
+@app.route("/logout")
+def api_logout():
+
     return render_template('Login.html')
 
-
-"""@app.route("/current-user")
-def api_get_current_user():
-    auth_header = request.headers.get('Authorization')
-
-    if not auth_header or 'Bearer' not in auth_header:
-        return jsonify({'message': 'Bad authorization header!'}), 400
-
-    split = auth_header.split(' ')
-    
-    try:
-        decode_data = jwt.decode(split[1], app.config['SECRET_KEY'])
-        user = User.query.filter_by(public_id=decode_data.get('user_id')).first()
-        print(user)
-
-        if not user:
-            return jsonify({'message': 'Token is invalid'}), 401
-        return jsonify({
-            'message': 'User is authenticated',
-            'user': user.as_dict()
-        })
-    except Exception as error:
-        return jsonify({'message': 'Token is invalid'}), 401
-"""
 @app.route("/login", methods=["POST", "GET"])
 def api_login():
     if request.method == "POST":
         try:
-            #req = request.get_json(silent=True)
             if  not request.form['username'] or not request.form['password']:
                 return jsonify({
                     'message': 'No login data found'
@@ -118,6 +94,7 @@ def api_login():
 
                 token = jwt.encode(token_data, app.config['SECRET_KEY'])
                 session['token'] = token.decode('UTF-8')
+                session['username'] = user.username
                 return redirect('/home')
 
             return jsonify({'message': 'invalid login'}), 401
@@ -127,17 +104,6 @@ def api_login():
             return jsonify({'message': 'something went wrong'}), 400
     return render_template('Login.html')
 
-@app.route("/admin", methods=["POST", "GET"])
-def api_admin():
-    if request.method == "GET":
-        return render_template('Admin.html')
-    else:
-        data = User.query.all()
-        users = [user.as_dict() for user in data]
-        print (users)
-        return render_template('Admin.html', User=users)
-
-
 @app.route("/users")
 @token_required(is_admin=True)
 def api_get_users(current_user):
@@ -146,15 +112,6 @@ def api_get_users(current_user):
     users = [user.as_dict() for user in data]
     return jsonify(users)
 
-#@app.route("/user/<int:user_id>")
-#@token_required
-'''
-def api_get_users(current_user, user_id):
-
-    data = User.query.filter_by(mac_address=user_id)
-    users = [user.as_dict() for user in data]
-    return jsonify(users)
-'''
 @app.route("/register", methods=["POST", "GET"])
 def api_create_users():
     if request.method == "POST":
@@ -180,8 +137,17 @@ def api_create_users():
 @app.route('/home', methods=["POST", "GET"])
 def tampilan():
     if request.method == "GET":
-        return render_template('Home.html')
+        if session['username'] == "admin":
+            data = User.query.all()
+            users = [user.as_dict() for user in data]
+            print(users)
+        return render_template('Home.html', User=users)
     else:
+        if request.form["action"]=="delete" and session['username'] == "admin":
+            db.session.query(User).filter(User.id==request.form["id"]).delete()
+            db.session.commit()
+            print(session['username'])
+            return redirect("/home")
         token = "Bearer " + request.form['Token']
         tipedata = request.form['Tipedata']
         conn = httplib2.HTTPConnectionWithTimeout("localhost:5001")
