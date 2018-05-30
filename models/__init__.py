@@ -1,5 +1,5 @@
 #from uuid import uuid4
-from controllers.app_core import db, bcrypt
+from controllers.app_core import db, ma, bcrypt
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -26,3 +26,12 @@ class User(db.Model):
             'mac_address': self.mac_address,
             'is_admin': self.is_admin
         }
+
+class UserSchema(ma.Schema):
+    class Meta:
+        # Fields to expose
+        fields = ('id', 'username', 'mac_address', 'is_admin')
+
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)

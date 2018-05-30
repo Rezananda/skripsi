@@ -1,13 +1,16 @@
 from functools import wraps
 from flask import *
+from flask_cors import CORS
+from flask_marshmallow import Marshmallow
+from models import user_schema, users_schema
 import jwt
 import httplib2
 from models import User
-from controllers.app_core import app, db
 from pymongo import MongoClient
 import gridfs
 import json, pickle
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from flask_bcrypt import Bcrypt
 import os
 from bson import ObjectId
@@ -17,17 +20,17 @@ def validate(self, form, extra_validators=tuple()):
     self.errors = list(self.process_errors)
 
 app = Flask(__name__)
+CORS(app)
 
 bcrypt = Bcrypt(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 db_path = os.path.join(basedir, '../database/database.db')
 db_uri = 'sqlite:///{}'.format(db_path)
-
-app.config['SECRET_KEY'] = 'secretkey'
+app.config['SECRET_KEY'] = 'awefawefawefawef'
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
+ma = Marshmallow(app)
 
 #client = MongoClient('10.34.216.102')
 client = MongoClient('159.65.1.111', 29027,
@@ -74,7 +77,14 @@ def token_required(is_admin=False):
 
 @app.route("/")
 def index():
-    return render_template('Login.html')
+    print(session)
+    if 'admin' in session:
+        if session['admin'] == True:
+            return redirect('/admin')
+        else:
+            return redirect('/home')
+    else:
+        return render_template('Login.html')
 
 
 """@app.route("/current-user")
@@ -100,7 +110,7 @@ def api_get_current_user():
     except Exception as error:
         return jsonify({'message': 'Token is invalid'}), 401
 """
-@app.route("/login", methods=["POST", "GET"])
+@app.route("/api/login", methods=["POST", "GET"])
 def api_login():
     if request.method == "POST":
         try:
@@ -110,25 +120,46 @@ def api_login():
                     'message': 'No login data found'
                 })
             user = User.query.filter_by(username=request.form['username']).first()
-
+            
             if user and user.check_password(request.form['password']):
                 token_data = {
-                    'user_id': user.mac_address
+                    'user_id': user.mac_address,
+                    'username': user.username,
+                    'admin': user.is_admin
                 }
 
+                print(user.is_admin)
                 token = jwt.encode(token_data, app.config['SECRET_KEY'])
                 session['token'] = token.decode('UTF-8')
-                return redirect('/home')
+                session['username'] = user.username
+                session['admin'] = user.is_admin
+                print(session)
+                #return redirect('/home')
+                return jsonify({'token': token.decode('UTF-8'), 'username': user.username, 'admin': user.is_admin}), 200
 
             return jsonify({'message': 'invalid login'}), 401
 
         except Exception as error:
             print(error)
             return jsonify({'message': 'something went wrong'}), 400
-    return render_template('Login.html')
+    #return render_template('Login.html')
+
+# Route for getting js file
+@app.route('/js/<path:path>')
+def send_js(path):
+    return send_from_directory('templates/js', path)
+@app.route("/register")
+def view_register():
+    return render_template('Register.html')
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    print(session)
+    return redirect('/')
 
 @app.route("/admin", methods=["POST", "GET"])
-def api_admin():
+def view_admin():
     if request.method == "GET":
         return render_template('Admin.html')
     else:
@@ -138,13 +169,75 @@ def api_admin():
         return render_template('Admin.html', User=users)
 
 
-@app.route("/users")
-@token_required(is_admin=True)
-def api_get_users(current_user):
-
+@app.route("/api/users")
+#@token_required(is_admin=True)
+def api_get_users():
     data = User.query.all()
-    users = [user.as_dict() for user in data]
-    return jsonify(users)
+    result = users_schema.dump(data)
+    print(result)
+    return jsonify(result.data)
+
+@app.route("/api/datatables/users")
+def api_datatables_get_users():
+    # Store request query string
+    requestData = request.args
+
+    #datatables column index => database column name
+    columns = {
+        0: 'username',
+        1: 'mac_address',
+        2: 'is_admin'
+    }
+    
+    #getting total number records without any search
+    totalData = User.query.count()
+    #when there is no search parameter then total number rows = total number filtered rows.
+    totalFiltered = totalData;   
+
+    
+    if requestData['search[value]']:
+        sql = "SELECT * FROM user  "
+        sql += "WHERE username LIKE '" + requestData['search[value]'] + "%' "
+        sql += "OR mac_address LIKE '" + requestData['search[value]'] + "%' "
+        sql += "OR is_admin LIKE '" + requestData['search[value]'] + "%' "
+
+        query = text(sql)
+        result = db.engine.execute(sql).fetchall()
+        #result = users_schema.dump(result)
+        totalFiltered = len(result)
+
+        sql += " ORDER BY " + columns[int(requestData['order[0][column]'])] + " " + requestData['order[0][dir]'] + " " + " LIMIT " + requestData['start'] + " ," + requestData['length'] + " "
+        query = text(sql)
+    else:
+        sql = "SELECT * FROM user "
+        sql += " ORDER BY " + columns[int(requestData['order[0][column]'])] + " " + requestData['order[0][dir]'] + " " + " LIMIT " + requestData['start'] + " ," + requestData['length'] + " "
+        query = text(sql)
+    
+    result = db.engine.execute(query)
+    data = []
+
+    while True:
+        row = result.fetchone()
+
+        if row == None:
+            break
+
+        nestedData = {}
+        user = user_schema.dump(row).data
+        nestedData['DT_RowId'] = user['id']
+        nestedData['username'] = user['username']
+        nestedData['mac_address'] = user['mac_address']
+        nestedData['is_admin'] = user['is_admin']
+        nestedData['action'] = '<button class="btn btn-success" data-toggle="modal" data-target="#update-user-modal" data-id="' + str(user['id']) + '"><span class="glyphicon glyphicon-pencil"></span></button><button class="btn btn-danger" data-toggle="modal" data-target="#confirm-delete" data-id="' + str(user['id']) + '"><span class="glyphicon glyphicon-trash"></span></button>'
+        data.append(nestedData)
+
+    return jsonify({
+        'draw' : int(requestData['draw']),
+        'recordsTotal' : int(totalData),
+        'recordsFiltered': int(totalFiltered),
+        'data': data
+    })
+
 
 #@app.route("/user/<int:user_id>")
 #@token_required
@@ -155,7 +248,7 @@ def api_get_users(current_user, user_id):
     users = [user.as_dict() for user in data]
     return jsonify(users)
 '''
-@app.route("/register", methods=["POST", "GET"])
+@app.route("/api/register", methods=["POST", "GET"])
 def api_create_users():
     if request.method == "POST":
         #req = request.get_json(silent=True)

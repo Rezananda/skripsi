@@ -6,3 +6,5 @@ Pre requisites :
 - functools
 - gridfs
 - httplib
+- flask-cors
+- flask_marshmallow
