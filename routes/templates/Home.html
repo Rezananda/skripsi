@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to API Web Service</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <style>
+    /* Set height of the grid so .sidenav can be 100% (adjust if needed) */
+    .row.content {height: 1500px}
+
+    /* Set gray background color and 100% height */
+    .sidenav {
+      background-color: #f1f1f1;
+      height: 100%;
+    }
+
+    /* Set black background color, white text and some padding */
+    footer {
+      background-color: #555;
+      color: white;
+      padding: 15px;
+    }
+
+    /* On small screens, set height to 'auto' for sidenav and grid */
+    @media screen and (max-width: 767px) {
+      .sidenav {
+        height: auto;
+        padding: 15px;
+      }
+      .row.content {height: auto;}
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-inverse">
+  <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="#">API Webservice For IoT</a>
+    </div>
+    <ul class="nav navbar-nav">
+      <li class="active"><a href="http://127.0.0.1:5001/home">Home</a></li>
+    </ul>
+    <ul class="nav navbar-nav navbar-right">
+      <li><a href="http://127.0.0.1:5001/register"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
+      <li><a href="http://127.0.0.1:5001/login"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="container-fluid">
+  <div class="row content">
+    <div class="col-sm-3 sidenav">
+        <h3> SOP POST </h3>
+        <ol>
+            <li>Lakukan login terlebih dahulu untuk mendapatkan token</li>
+            <li>Silahkan gunakan salah satu API Tester Untuk mengakses fungsi post</li>
+            <li>Silahkan masukkan path <a href="https://iot.belajardisini.com:5001/api/post"></a> pada kolom skema yang telah disediakan</li>
+            <li>Tambahkan header dengan nama header <strong>Authorization</strong> dan value <strong>Bearer (token yang didapatkan setelah login)</strong></li>
+            <li>Masukkan data yang mau di post pada kolom Body</li>
+            <li>Pilih method <strong>POST</strong></li>
+            <li>Klik tombol <strong>Send</strong></li>
+        </ol>
+        <br><br>
+        <h3> SOP GET </h3>
+        <ol>
+            <li>Lakukan login terlebih dahulu untuk mendapatkan token</li>
+            <li>Silahkan gunakan salah satu API Tester Untuk mengakses fungsi GET</li>
+            <li>Silahkan masukkan path <a href="https://iot.belajardisini.com:5001/api/getdata"></a> pada kolom skema yang telah disediakan</li>
+            <li>Tambahkan header dengan nama header <strong>Authorization</strong> dan value <strong>Bearer (token yang didapatkan setelah login)</strong></li>
+            <li>Pilih method <strong>GET</strong></li>
+            <li>Klik tombol <strong>Send</strong></li>
+        </ol>
+    </div>
+    <div class="col-sm-9">
+    <form name="Home" method="post" action="">
+        <div class="form-group">
+            <label for="Token">Input Token :</label>
+            <input type="text" class="form-control" id="Token" name="Token" value="{{session['token']}}">
+        </div>
+        <div class="radio">
+          <label><input type="radio" name="Tipedata" value="" checked>Text</label>
+        </div>
+        <div class="radio">
+          <label><input type="radio" name="Tipedata" value="?topic=gambar" checked>Gambar</label>
+        </div>
+        <button type="submit" class="btn btn-default" value="Get">GET</button> <br><br>
+        <div class="form-group">
+            <label for="Hasil">Hasil Get Data</label>
+            <textarea class="form-control" rows="5" width="65" id="Hasil"> {{Data}} </textarea>
+        </div>
+    </form>
+    </div>
+    <div class="col-sm-9">
+    <h2>Response Method</h2>
+        <table class="table table-hover">
+            <tr>
+                <th>Method</th>
+                <th>Jenis Data</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td>Get</td>
+                <td>Text</td>
+                <td>Menampilkan hasil sensor berupa humidity, protocol, sensor,temperatur, timestamp, dan topic</td>
+            </tr>
+            <tr>
+                <td>Get</td>
+                <td>Gambar</td>
+                <td>Menampilkan hasil sensor kamera berupa link gambar</td>
+            </tr>
+             <tr>
+                <td>Post</td>
+                <td>Text</td>
+                <td>Menginput data text</td>
+            </tr>
+            <tr>
+                <td>Post</td>
+                <td>Gambar</td>
+                <td>Menginput data gambar</td>
+            </tr>
+        </table>
+    </div>
+</div>
+</div>
+</body>
+</html>
