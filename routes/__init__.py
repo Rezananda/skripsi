@@ -29,13 +29,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-#client = MongoClient('10.34.216.102')
-client = MongoClient('159.65.1.111', 29027,
-                        username='mongostorage',
-                        password='iotdatastr',
-                        authSource='admin',
-                        authMechanism='SCRAM-SHA-1')
-
+client = MongoClient('10.34.216.102')
 
 def validate_token(request,is_admin=False):
 
@@ -74,7 +68,7 @@ def token_required(is_admin=False):
 
 @app.route("/logout")
 def api_logout():
-
+    session.clear()
     return render_template('Login.html')
 
 @app.route("/login", methods=["POST", "GET"])
@@ -137,6 +131,7 @@ def api_create_users():
 @app.route('/home', methods=["POST", "GET"])
 def tampilan():
     if request.method == "GET":
+        users=[]
         if session['username'] == "admin":
             data = User.query.all()
             users = [user.as_dict() for user in data]
@@ -204,7 +199,3 @@ def getGambar(oid):
     res = make_response(file.read())
     res.mimetype = "image/jpg"
     return res
-    #return Response(file, mimetype=file.content_type, direct_passthrough=True)
-
-#if __name__ == '__main__':
- #       app.run(debug=True, threaded=True, port=5001,host='127.0.0.1')
