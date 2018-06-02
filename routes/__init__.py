@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import *
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from flask_marshmallow import Marshmallow
 from models import user_schema, users_schema
 import jwt
@@ -42,17 +42,21 @@ def validate_token(request,is_admin=False):
 
         return {'user': user.as_dict()}
 
-    except Exception as error:
-        return {'message': 'Token is invalid'}
+    except jwt.ExpiredSignatureError:
+        return {'message' :'Signature expired. Please log in again.'}
+    except jwt.InvalidTokenError:
+        return {'message': 'Invalid token. Please log in again.'}
 
 def token_required(is_admin=False):
     def token_required_inner(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            res = validate_token(request, is_admin)
-            if not res.get('user'):
-                return jsonify(res.get('message')), 401
-            return f(res.get('user'), *args, **kwargs)
+            print('decorator call')
+            if request.method != 'OPTIONS':
+                res = validate_token(request, is_admin)
+                if not res.get('user'):
+                    return jsonify(res.get('message')), 401
+                return f(*args, **kwargs)
         return decorated
     return token_required_inner
 
@@ -95,6 +99,7 @@ def api_get_current_user():
 @app.route("/api/login", methods=["POST", "GET"])
 def api_login():
     if request.method == "POST":
+        
         try:
             #req = request.get_json(silent=True)
             if  not request.form['username'] or not request.form['password']:
@@ -104,13 +109,19 @@ def api_login():
             user = User.query.filter_by(username=request.form['username']).first()
             
             if user and user.check_password(request.form['password']):
-                token_data = {
-                    'user_id': user.mac_address,
-                    'username': user.username,
-                    'admin': user.is_admin
-                }
+                if user.is_admin:
+                    token_data = {
+                        'user_id': user.mac_address,
+                        'username': user.username,
+                        'role': 'admin'
+                    }
+                else:
+                    token_data = {
+                        'user_id': user.mac_address,
+                        'username': user.username,
+                        'role': 'user'
+                    }
 
-                print(user.is_admin)
                 token = jwt.encode(token_data, app.config['SECRET_KEY'])
                 session['token'] = token.decode('UTF-8')
                 session['username'] = user.username
@@ -151,13 +162,57 @@ def view_admin():
         return render_template('Admin.html', User=users)
 
 
-@app.route("/api/users")
-#@token_required(is_admin=True)
+@app.route("/api/users", methods=["GET"])
+@token_required(is_admin=True)
 def api_get_users():
     data = User.query.all()
     result = users_schema.dump(data)
     print(result)
     return jsonify(result.data)
+
+# endpoit to update user
+@app.route("/api/user/<int:id>", methods=["PUT"])
+@token_required(is_admin=True)
+def user_update(id):
+    try:
+        user = User.query.get(id)
+
+        if user:
+            username = request.form['username']
+            mac_address = request.form['mac_address']
+            is_admin = True if request.form['is_admin'] == 'true' else False
+
+            user.username = username
+            user.mac_address = mac_address
+            user.is_admin = is_admin
+
+            db.session.commit()
+            return jsonify({'message': 'success'}), 200
+        else:
+            return jsonify({'message': 'user not exists'}), 400
+    except Exception as error:
+        print(error)
+        return jsonify({'message': 'something went wrong'}), 400
+
+
+# endpoint to delete user
+@app.route("/api/user/<int:id>", methods=["DELETE"])
+@token_required(is_admin=True)
+def user_delete(id):
+    try:
+        user = User.query.get(id)
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+
+            return jsonify({'message': 'success'}), 200
+        else:
+            return jsonify({'message': 'user not exists'}), 400
+
+    except Exception as error:
+        print(error)
+        return jsonify({'message': 'something went wrong'}), 400
+
 
 @app.route("/api/datatables/users")
 def api_datatables_get_users():
@@ -239,11 +294,19 @@ def api_create_users():
                 'message': 'No json data found'
             })
         try:
-            user = User(request.form['username'] , request.form['password'], request.form['mac_address'])
-            db.session.add(user)
-            db.session.commit()
+            username = request.form['username']
+            password = request.form['password']
+            mac_address = request.form['mac_address']
 
-            return redirect('/login')
+            if User.query.filter_by(username=username).first():
+                return jsonify({ 'message': 'Username already exsist'}), 400
+            else:
+                user = User(username , password, mac_address)
+                db.session.add(user)
+                db.session.commit()
+                return jsonify({
+                    "message": "success"
+                }), 200
 
         except Exception as error:
             print(error)

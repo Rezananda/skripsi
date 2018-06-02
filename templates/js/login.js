@@ -17,12 +17,12 @@ $(document).ready(function () {
                 //var payload = parseJwt(data.token)
                 //console.log(payload)
                 //location.reload()
-                if (data.admin) {
-                    window.location.replace('http://localhost:5001/admin')
-                }
-                else {
-                    window.location.replace('http://localhost:5001/home')
-                }
+                //if (data.admin) {
+                //    window.location.replace('http://localhost:5001/admin')
+                //}
+                //else {
+                //    window.location.replace('http://localhost:5001/home')
+                //}
             },
             error: function (xhr, textStatus, errorThrown) {
                 $('#alert_message').html('<div class="alert alert-danger fade in">' +
