@@ -337,7 +337,7 @@ def tampilan():
 
 @app.route('/api/getdata',methods=['GET'])
 @token_required()
-def getdata(self):
+def getdata():
     db_ = client.test
     data = []
     if request.args.get('topic') :
@@ -355,7 +355,7 @@ def getdata(self):
 
 @app.route('/api/post', methods=['POST'])
 @token_required()
-def post(self):
+def post():
     db = client.test
     fs = gridfs.GridFS(db)
     for data in request.get_json():
